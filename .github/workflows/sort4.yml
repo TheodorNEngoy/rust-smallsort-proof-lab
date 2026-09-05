@@ -51,7 +51,7 @@ jobs:
           set -euo pipefail
           /usr/bin/time -v verify/scripts/run-kani.sh --path "$GITHUB_WORKSPACE/verify" --kani-args \
             --harness sort4_preserves_values_and_sorts_i32 \
-            --harness-timeout 5m --output-format=terse 2>&1 | tee proof.log
+            --harness-timeout 5m 2>&1 | tee proof.log
           python3 lab/check_result.py positive proof.log
 
       - name: Confirm the verifier rejects deliberate value loss

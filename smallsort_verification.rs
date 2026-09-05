@@ -62,11 +62,11 @@ fn sort4_preserves_values_and_sorts_i32() {
             destination[3].assume_init(),
         ]
     };
-    assert!(is_sorted(&after));
+    kani::assert(is_sorted(&after), "SORT4_SORTEDNESS");
     // witness is unconstrained and does not influence sorting. Proving this
     // assertion for every witness establishes preservation of each i32's
     // multiplicity. Ordinary unit tests below do not provide that proof.
-    assert!(preserves_count(&before, &after, witness));
+    kani::assert(preserves_count(&before, &after, witness), "SORT4_MULTISET");
 }
 
 #[cfg(test)]

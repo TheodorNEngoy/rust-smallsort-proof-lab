@@ -14,7 +14,7 @@ control = """
 #[kani::unwind(6)]
 fn negative_control_preservation() {
     // Deliberately false oracle control; this must fail verification.
-    assert!(preserves_count(&[1, 2, 3, 4], &[0, 0, 0, 0], 1), "INTENTIONAL_MULTISET_LOSS_CONTROL");
+    kani::assert(preserves_count(&[1, 2, 3, 4], &[0, 0, 0, 0], 1), "INTENTIONAL_MULTISET_LOSS_CONTROL");
 }
 """
 addition = '\n#[cfg(kani)]\n#[unstable(feature = "kani", issue = "none")]\nmod verify_income_candidate {\n' + draft + control + '\n}\n'
