@@ -23,7 +23,7 @@ fn negative_control_uninitialized_read() {
     let slot = crate::mem::MaybeUninit::<u8>::uninit();
     let value = unsafe { slot.assume_init() };
     // Keep the read observable without introducing another false assertion.
-    kani::cover!(value == 0, "UNINIT_CONTROL_READ");
+    kani::cover(value == 0, "UNINIT_CONTROL_READ");
 }
 """
 addition = '\n#[cfg(kani)]\n#[unstable(feature = "kani", issue = "none")]\nmod verify_income_candidate {\n' + draft + control + '\n}\n'
