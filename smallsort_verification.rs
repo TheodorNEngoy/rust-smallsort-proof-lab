@@ -1,6 +1,6 @@
-// Local feasibility draft; not compiled with Kani or verified by it.
-// Intended as a child module of the pinned upstream smallsort module.
-// This covers only sort4_stable for i32 with ordinary integer ordering.
+// Scoped proof harnesses, integrated into the pinned upstream smallsort module.
+// These cover sort4_stable and sort8_stable for ordinary i32 ordering.
+// See immutable hosted run logs for the verification status of each harness.
 // It is not a complete Challenge 8 solution or a submission-ready patch.
 
 #[cfg(kani)]
@@ -67,6 +67,46 @@ fn sort4_preserves_values_and_sorts_i32() {
     // assertion for every witness establishes preservation of each i32's
     // multiplicity. Ordinary unit tests below do not provide that proof.
     kani::assert(preserves_count(&before, &after, witness), "SORT4_MULTISET");
+}
+
+#[cfg(kani)]
+#[kani::proof]
+#[kani::unwind(10)]
+fn sort8_preserves_values_and_sorts_i32() {
+    use crate::mem::MaybeUninit;
+
+    let mut input: [i32; 8] = kani::any();
+    let before = input;
+    let witness: i32 = kani::any();
+    let mut destination = [MaybeUninit::<i32>::uninit(); 8];
+    let mut scratch = [MaybeUninit::<i32>::uninit(); 8];
+    // SAFETY: input is initialized, aligned and readable/writable for eight
+    // i32s. Destination and scratch are distinct aligned writable arrays,
+    // each with eight slots; neither overlaps the input or each other.
+    unsafe {
+        super::sort8_stable(
+            input.as_mut_ptr(),
+            destination.as_mut_ptr().cast::<i32>(),
+            scratch.as_mut_ptr().cast::<i32>(),
+            &mut |a, b| *a < *b,
+        );
+    }
+    // Initialization must follow from the two actual sort4 calls and merge.
+    // No sorted-half or output-initialization assumptions are introduced.
+    let after = unsafe {
+        [
+            destination[0].assume_init(),
+            destination[1].assume_init(),
+            destination[2].assume_init(),
+            destination[3].assume_init(),
+            destination[4].assume_init(),
+            destination[5].assume_init(),
+            destination[6].assume_init(),
+            destination[7].assume_init(),
+        ]
+    };
+    kani::assert(is_sorted(&after), "SORT8_SORTEDNESS");
+    kani::assert(preserves_count(&before, &after, witness), "SORT8_MULTISET");
 }
 
 #[cfg(test)]

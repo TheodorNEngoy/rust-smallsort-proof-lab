@@ -5,13 +5,14 @@ import sys
 
 mode, name = sys.argv[1:]
 log = Path(name).read_text()
-if mode == "positive":
+if mode in ("positive", "positive8"):
+    size = 4 if mode == "positive" else 8
     if not re.search(r"Complete\s*-\s*1 successfully verified harnesses?,\s*0 failures?,\s*1 total", log):
         raise SystemExit("Missing exact one-harness success summary")
-    if "sort4_preserves_values_and_sorts_i32" not in log:
+    if f"sort{size}_preserves_values_and_sorts_i32" not in log:
         raise SystemExit("Expected positive harness not observed")
     blocks = re.split(r"(?m)^\s*Check \d+:", log)[1:]
-    for message in ("SORT4_SORTEDNESS", "SORT4_MULTISET"):
+    for message in (f"SORT{size}_SORTEDNESS", f"SORT{size}_MULTISET"):
         matches = [block for block in blocks if message in block]
         if len(matches) != 1 or not re.search(r"Status:\s*SUCCESS", matches[0]):
             raise SystemExit(f"Expected reachable successful assertion: {message}")
