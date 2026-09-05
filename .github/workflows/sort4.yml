@@ -101,6 +101,6 @@ jobs:
             echo 'This run calibrates unchanged sort4_stable and sort8_stable implementations for i32 values.'
             echo 'A successful run is a partial proof, not completion of Challenge 8 or an award.'
             echo 'See the proof and negative-control step conclusions and logs.'
-            echo 'Experimental uninitialized-read checks are explicitly enabled and calibrated.'
+            echo 'Experimental uninitialized-read checks are enabled; see the detector-control step for calibration outcome.'
             echo 'No Actions cache, artifact upload, larger runner, or scheduled execution is configured.'
           } >> "$GITHUB_STEP_SUMMARY"
