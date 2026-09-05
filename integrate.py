@@ -16,6 +16,15 @@ fn negative_control_preservation() {
     // Deliberately false oracle control; this must fail verification.
     kani::assert(preserves_count(&[1, 2, 3, 4], &[0, 0, 0, 0], 1), "INTENTIONAL_MULTISET_LOSS_CONTROL");
 }
+
+#[kani::proof]
+fn negative_control_uninitialized_read() {
+    // A verifier-only detector control, separate from the sorting target.
+    let slot = crate::mem::MaybeUninit::<u8>::uninit();
+    let value = unsafe { slot.assume_init() };
+    // Keep the read observable without introducing another false assertion.
+    kani::cover!(value == 0, "UNINIT_CONTROL_READ");
+}
 """
 addition = '\n#[cfg(kani)]\n#[unstable(feature = "kani", issue = "none")]\nmod verify_income_candidate {\n' + draft + control + '\n}\n'
 target.write_bytes(data + addition.encode())

@@ -51,8 +51,8 @@ jobs:
           set -euo pipefail
           /usr/bin/time -v verify/scripts/run-kani.sh --path "$GITHUB_WORKSPACE/verify" --kani-args \
             --harness sort4_preserves_values_and_sorts_i32 \
-            --harness-timeout 5m 2>&1 | tee proof.log
-          python3 lab/check_result.py positive proof.log
+            --harness-timeout 5m -Z uninit-checks 2>&1 | tee proof.log
+          python3 lab/check_result.py positive_init proof.log
 
       - name: Verify the actual eight-element helper and its merge
         shell: bash
@@ -60,8 +60,8 @@ jobs:
           set -euo pipefail
           /usr/bin/time -v verify/scripts/run-kani.sh --path "$GITHUB_WORKSPACE/verify" --kani-args \
             --harness sort8_preserves_values_and_sorts_i32 \
-            --harness-timeout 5m 2>&1 | tee proof8.log
-          python3 lab/check_result.py positive8 proof8.log
+            --harness-timeout 5m -Z uninit-checks 2>&1 | tee proof8.log
+          python3 lab/check_result.py positive8_init proof8.log
 
       - name: Confirm the verifier rejects deliberate value loss
         shell: bash
@@ -70,12 +70,26 @@ jobs:
           set +e
           verify/scripts/run-kani.sh --path "$GITHUB_WORKSPACE/verify" --kani-args \
             --harness negative_control_preservation \
-            --harness-timeout 1m > control.log 2>&1
+            --harness-timeout 1m -Z uninit-checks > control.log 2>&1
           control_status=$?
           set -e
           cat control.log
           test "$control_status" -ne 0
           python3 lab/check_result.py negative control.log
+
+      - name: Confirm uninitialized-read instrumentation detects the control
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          verify/scripts/run-kani.sh --path "$GITHUB_WORKSPACE/verify" --kani-args \
+            --harness negative_control_uninitialized_read \
+            --harness-timeout 1m -Z uninit-checks > uninit-control.log 2>&1
+          control_status=$?
+          set -e
+          cat uninit-control.log
+          test "$control_status" -ne 0
+          python3 lab/check_result.py negative_uninit uninit-control.log
 
       - name: Record limits and runner resources
         if: always()
@@ -87,5 +101,6 @@ jobs:
             echo 'This run calibrates unchanged sort4_stable and sort8_stable implementations for i32 values.'
             echo 'A successful run is a partial proof, not completion of Challenge 8 or an award.'
             echo 'See the proof and negative-control step conclusions and logs.'
+            echo 'Experimental uninitialized-read checks are explicitly enabled and calibrated.'
             echo 'No Actions cache, artifact upload, larger runner, or scheduled execution is configured.'
           } >> "$GITHUB_STEP_SUMMARY"
