@@ -42,7 +42,9 @@ fn sort4_preserves_values_and_sorts_i32() {
 
     let before: [i32; 4] = kani::any();
     let witness: i32 = kani::any();
-    let mut destination = [MaybeUninit::<i32>::uninit(); 4];
+    // A single outer MaybeUninit avoids the pinned verifier's unsupported
+    // array-of-unions layout without initializing any output bytes.
+    let mut destination = MaybeUninit::<[i32; 4]>::uninit();
     // SAFETY: source is initialized and readable for four i32s; destination
     // is aligned, writable for four i32s, and belongs to a distinct array.
     unsafe {
@@ -54,14 +56,7 @@ fn sort4_preserves_values_and_sorts_i32() {
     }
     // These reads must be justified by the verifier's initialization checks.
     // There is deliberately no assumption that the output was initialized.
-    let after = unsafe {
-        [
-            destination[0].assume_init(),
-            destination[1].assume_init(),
-            destination[2].assume_init(),
-            destination[3].assume_init(),
-        ]
-    };
+    let after = unsafe { destination.assume_init() };
     kani::assert(is_sorted(&after), "SORT4_SORTEDNESS");
     // witness is unconstrained and does not influence sorting. Proving this
     // assertion for every witness establishes preservation of each i32's
@@ -78,8 +73,8 @@ fn sort8_preserves_values_and_sorts_i32() {
     let mut input: [i32; 8] = kani::any();
     let before = input;
     let witness: i32 = kani::any();
-    let mut destination = [MaybeUninit::<i32>::uninit(); 8];
-    let mut scratch = [MaybeUninit::<i32>::uninit(); 8];
+    let mut destination = MaybeUninit::<[i32; 8]>::uninit();
+    let mut scratch = MaybeUninit::<[i32; 8]>::uninit();
     // SAFETY: input is initialized, aligned and readable/writable for eight
     // i32s. Destination and scratch are distinct aligned writable arrays,
     // each with eight slots; neither overlaps the input or each other.
@@ -93,18 +88,7 @@ fn sort8_preserves_values_and_sorts_i32() {
     }
     // Initialization must follow from the two actual sort4 calls and merge.
     // No sorted-half or output-initialization assumptions are introduced.
-    let after = unsafe {
-        [
-            destination[0].assume_init(),
-            destination[1].assume_init(),
-            destination[2].assume_init(),
-            destination[3].assume_init(),
-            destination[4].assume_init(),
-            destination[5].assume_init(),
-            destination[6].assume_init(),
-            destination[7].assume_init(),
-        ]
-    };
+    let after = unsafe { destination.assume_init() };
     kani::assert(is_sorted(&after), "SORT8_SORTEDNESS");
     kani::assert(preserves_count(&before, &after, witness), "SORT8_MULTISET");
 }
