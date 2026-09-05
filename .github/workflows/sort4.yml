@@ -1,0 +1,82 @@
+name: SmallSort proof calibration
+
+'on':
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smallsort-calibration
+  cancel-in-progress: false
+
+jobs:
+  sort4:
+    if: github.repository == 'TheodorNEngoy/rust-smallsort-proof-lab' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CARGO_BUILD_JOBS: '2'
+      VERIFY_STD_COMMIT: ad7590c3dbdfeb97f2b4c7254dc5f4787ca9e783
+    steps:
+      - name: Check out this calibration at the dispatched commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init lab
+          git -C lab remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git -C lab fetch --depth 1 origin "$GITHUB_SHA"
+          git -C lab checkout --detach FETCH_HEAD
+
+      - name: Prepare disposable runner and pinned verification target
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Only preinstalled software on this disposable hosted runner.
+          # Matches the upstream contest's Ubuntu workflow preparation.
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /usr/local/.ghcup
+          df -h .
+          free -h
+          git init verify
+          git -C verify remote add origin https://github.com/model-checking/verify-rust-std.git
+          git -C verify fetch --depth 1 origin "$VERIFY_STD_COMMIT"
+          git -C verify checkout --detach FETCH_HEAD
+          git -C verify submodule update --init --recursive --depth 1
+          test "$(git -C verify rev-parse HEAD)" = "$VERIFY_STD_COMMIT"
+          python3 lab/integrate.py verify/library/core/src/slice/sort/shared/smallsort.rs lab/smallsort_verification.rs
+
+      - name: Build pinned Kani and verify the actual four-element helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v verify/scripts/run-kani.sh --path "$GITHUB_WORKSPACE/verify" --kani-args \
+            --harness sort4_preserves_values_and_sorts_i32 \
+            --harness-timeout 5m --output-format=terse 2>&1 | tee proof.log
+          python3 lab/check_result.py positive proof.log
+
+      - name: Confirm the verifier rejects deliberate value loss
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          verify/scripts/run-kani.sh --path "$GITHUB_WORKSPACE/verify" --kani-args \
+            --harness negative_control_preservation \
+            --harness-timeout 1m > control.log 2>&1
+          control_status=$?
+          set -e
+          cat control.log
+          test "$control_status" -ne 0
+          python3 lab/check_result.py negative control.log
+
+      - name: Record limits and runner resources
+        if: always()
+        shell: bash
+        run: |
+          df -h .
+          free -h
+          {
+            echo 'This run calibrates one unchanged sort4_stable implementation for four i32 values.'
+            echo 'A successful run is a partial proof, not completion of Challenge 8 or an award.'
+            echo 'See the proof and negative-control step conclusions and logs.'
+            echo 'No Actions cache, artifact upload, larger runner, or scheduled execution is configured.'
+          } >> "$GITHUB_STEP_SUMMARY"
